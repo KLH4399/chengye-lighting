@@ -19,7 +19,11 @@
     .category-card:active, .product-card:active, .style-card:active { transform: scale(0.98); }
     #contact-modal img { max-width: 100%; height: auto; pointer-events: auto; cursor: pointer; }
     footer button { transition: color 0.2s; }
-    select { padding: 8px; border-radius: 8px; border: 1px solid #e2e8f0; width: 100%; margin-bottom: 10px; }
+    /* 添加一个简单的加载中提示，虽然不是必须的，但能改善体验 */
+    .btn-loading {
+      opacity: 0.6;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body class="bg-gray-50 font-sans antialiased">
@@ -93,7 +97,7 @@
 
 </div>
 
-<!-- 联系微信弹窗 - 手机号版本 -->
+<!-- 联系微信弹窗 -->
 <div id="contact-modal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
   <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden">
     <div class="flex justify-between items-center p-4 border-b">
@@ -139,6 +143,7 @@ let products = [
 let currentStyle = null;
 let currentCate = null;
 const ADMIN_PWD = "2628585419";
+let isAddingProduct = false; // 添加一个标志位，防止重复点击
 
 // ========== 页面切换 ==========
 function showPage(pageId) {
@@ -156,6 +161,10 @@ function showPage(pageId) {
 function selectImageAsync() {
   return new Promise((resolve) => {
     const input = document.getElementById("image-selector");
+    if (!input) {
+      resolve(null);
+      return;
+    }
     input.value = "";
     const handler = (e) => {
       const file = e.target.files[0];
@@ -288,7 +297,7 @@ function saveWechatQR() {
     .catch(() => alert("长按二维码图片即可保存到手机"));
 }
 
-// ========== 后台渲染（完整版） ==========
+// ========== 后台渲染 ==========
 function renderAdminPanel() {
   // 风格区域
   const styleContainer = document.getElementById("admin-styles");
@@ -333,6 +342,10 @@ function renderAdminPanel() {
   }
 
   // 绑定后台事件
+  bindAdminEvents();
+}
+
+function bindAdminEvents() {
   // 删除风格
   document.querySelectorAll(".del-style").forEach(btn => {
     btn.onclick = () => {
@@ -348,6 +361,7 @@ function renderAdminPanel() {
       }
     };
   });
+  
   // 删除品类
   document.querySelectorAll(".del-cate").forEach(btn => {
     btn.onclick = () => {
@@ -361,6 +375,7 @@ function renderAdminPanel() {
       }
     };
   });
+  
   // 删除产品
   document.querySelectorAll(".del-prod").forEach(btn => {
     btn.onclick = () => {
@@ -372,6 +387,7 @@ function renderAdminPanel() {
       }
     };
   });
+  
   // 换图：风格
   document.querySelectorAll(".edit-style-img").forEach(btn => {
     btn.onclick = async () => {
@@ -386,6 +402,7 @@ function renderAdminPanel() {
       }
     };
   });
+  
   // 换图：产品
   document.querySelectorAll(".edit-prod-img").forEach(btn => {
     btn.onclick = async () => {
@@ -402,7 +419,7 @@ function renderAdminPanel() {
   });
 }
 
-// ========== 添加功能（修复版） ==========
+// ========== 添加功能 ==========
 async function addStyle() {
   let name = prompt("请输入风格名称");
   if (!name || name.trim() === "") return;
@@ -416,7 +433,6 @@ async function addStyle() {
 function addCategory() {
   if (!styles.length) { alert("请先添加风格"); return; }
   
-  // 创建选择对话框
   let styleOptions = "";
   styles.forEach(s => {
     styleOptions += `${s.id}. ${s.name}\n`;
@@ -442,54 +458,86 @@ function addCategory() {
 }
 
 async function addProduct() {
-  if (!categories.length) { 
-    alert("请先添加品类"); 
-    return; 
-  }
-  
-  // 创建选择对话框
-  let cateOptions = "";
-  categories.forEach((c) => {
-    const parentStyle = styles.find(s => s.id === c.styleId);
-    const styleName = parentStyle ? parentStyle.name : "未知";
-    cateOptions += `${c.id}. ${styleName} - ${c.name}\n`;
-  });
-  
-  let cateIdInput = prompt(`请选择要添加到哪个品类（输入序号）：\n${cateOptions}`);
-  if (!cateIdInput) return;
-  
-  const cateId = parseInt(cateIdInput);
-  const selectedCate = categories.find(c => c.id === cateId);
-  if (!selectedCate) {
-    alert("无效的品类序号");
+  // 防止重复点击
+  if (isAddingProduct) {
+    console.log("正在处理添加产品，请稍候...");
     return;
   }
   
-  const parentStyle = styles.find(s => s.id === selectedCate.styleId);
-  const styleName = parentStyle ? parentStyle.name : "未知";
+  const addBtn = document.getElementById("add-product");
   
-  const name = prompt(`请输入要在【${styleName} - ${selectedCate.name}】中添加的产品名称`);
-  if (!name || name.trim() === "") return;
-  
-  const img = await selectImageAsync();
-  if (!img) { 
-    alert("请选择产品图片"); 
-    return; 
+  try {
+    isAddingProduct = true;
+    if (addBtn) {
+      addBtn.classList.add("btn-loading");
+      addBtn.disabled = true;
+    }
+    
+    console.log("开始添加产品流程");
+    
+    if (!categories.length) { 
+      alert("请先添加品类"); 
+      return; 
+    }
+    
+    // 构建选项字符串
+    let cateOptions = "";
+    categories.forEach((c) => {
+      const parentStyle = styles.find(s => s.id === c.styleId);
+      const styleName = parentStyle ? parentStyle.name : "未知";
+      cateOptions += `${c.id}. ${styleName} - ${c.name}\n`;
+    });
+    
+    // 使用 setTimeout 确保弹窗能正常显示
+    let cateIdInput = prompt(`请选择要添加到哪个品类（输入序号）：\n${cateOptions}`);
+    if (!cateIdInput) return;
+    
+    const cateId = parseInt(cateIdInput);
+    const selectedCate = categories.find(c => c.id === cateId);
+    if (!selectedCate) {
+      alert("无效的品类序号");
+      return;
+    }
+    
+    const parentStyle = styles.find(s => s.id === selectedCate.styleId);
+    const styleName = parentStyle ? parentStyle.name : "未知";
+    
+    const name = prompt(`请输入要在【${styleName} - ${selectedCate.name}】中添加的产品名称`);
+    if (!name || name.trim() === "") return;
+    
+    // 短暂延迟，确保上一个弹窗完全关闭
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    const img = await selectImageAsync();
+    if (!img) { 
+      alert("请选择产品图片"); 
+      return; 
+    }
+    
+    const desc = prompt("请输入产品描述", "高品质灯具");
+    
+    products.push({ 
+      id: Date.now(), 
+      cateId: cateId, 
+      name: name.trim(), 
+      img: img, 
+      desc: desc || "精致灯具" 
+    });
+    
+    renderAdminPanel();
+    if (currentCate && currentCate.id === cateId) renderProducts();
+    alert(`成功在【${styleName} - ${selectedCate.name}】中添加了产品：${name}`);
+    
+  } catch (error) {
+    console.error("添加产品时出错:", error);
+    alert("添加产品失败，请重试");
+  } finally {
+    isAddingProduct = false;
+    if (addBtn) {
+      addBtn.classList.remove("btn-loading");
+      addBtn.disabled = false;
+    }
   }
-  
-  const desc = prompt("请输入产品描述", "高品质灯具");
-  
-  products.push({ 
-    id: Date.now(), 
-    cateId: cateId, 
-    name: name.trim(), 
-    img: img, 
-    desc: desc || "精致灯具" 
-  });
-  
-  renderAdminPanel();
-  if (currentCate && currentCate.id === cateId) renderProducts();
-  alert(`成功在【${styleName} - ${selectedCate.name}】中添加了产品：${name}`);
 }
 
 // ========== 后台登录 ==========
@@ -520,8 +568,12 @@ function initBackButtons() {
 
 // ========== 初始化所有事件 ==========
 function initEventListeners() {
+  console.log("开始初始化事件监听器");
+  
   const adminBtn = document.getElementById("admin-btn");
-  if (adminBtn) adminBtn.onclick = openAdmin;
+  if (adminBtn) {
+    adminBtn.onclick = openAdmin;
+  }
   
   const closeAdminBtn = document.getElementById("close-admin");
   if (closeAdminBtn) closeAdminBtn.onclick = () => showPage("home-page");
@@ -546,24 +598,36 @@ function initEventListeners() {
   }
   
   const addStyleBtn = document.getElementById("add-style");
-  if (addStyleBtn) addStyleBtn.onclick = addStyle;
+  if (addStyleBtn) {
+    addStyleBtn.onclick = addStyle;
+  }
   
   const addCategoryBtn = document.getElementById("add-category");
-  if (addCategoryBtn) addCategoryBtn.onclick = addCategory;
+  if (addCategoryBtn) {
+    addCategoryBtn.onclick = addCategory;
+  }
   
   const addProductBtn = document.getElementById("add-product");
-  if (addProductBtn) addProductBtn.onclick = addProduct;
+  if (addProductBtn) {
+    addProductBtn.onclick = function(e) {
+      e.preventDefault();
+      addProduct();
+    };
+    console.log("add-product 绑定成功");
+  }
   
   initBackButtons();
+  console.log("事件监听器初始化完成");
 }
 
 // ========== 启动应用 ==========
-window.onload = function() {
+window.addEventListener('DOMContentLoaded', function() {
+  console.log("页面加载完成，开始启动应用");
   renderHome();
   initEventListeners();
   showPage("home-page");
-  console.log("应用已启动");
-};
+  console.log("应用启动完成");
+});
 </script>
 </body>
 </html>
