@@ -19,10 +19,6 @@
     .category-card:active, .product-card:active, .style-card:active { transform: scale(0.98); }
     #contact-modal img { max-width: 100%; height: auto; pointer-events: auto; cursor: pointer; }
     footer button { transition: color 0.2s; }
-    .btn-loading {
-      opacity: 0.6;
-      pointer-events: none;
-    }
   </style>
 </head>
 <body class="bg-gray-50 font-sans antialiased">
@@ -229,8 +225,8 @@ function showPage(pageId) {
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
 
-// ========== 选择图片（仅用于风格封面，保留Base64） ==========
-async function selectImageAsync() {
+// ========== 选择图片（用于风格封面，返回 Base64） ==========
+function selectImageFile() {
   return new Promise((resolve) => {
     const input = document.getElementById("image-selector");
     if (!input) {
@@ -243,7 +239,10 @@ async function selectImageAsync() {
       if (file && file.type.startsWith("image/")) {
         const reader = new FileReader();
         reader.onload = () => resolve(reader.result);
-        reader.onerror = () => resolve(null);
+        reader.onerror = () => {
+          alert("图片读取失败");
+          resolve(null);
+        };
         reader.readAsDataURL(file);
       } else {
         resolve(null);
@@ -465,11 +464,11 @@ function bindAdminEvents() {
     };
   });
   
-  // 换图：风格（保留Base64方式，因为风格图数量很少）
+  // 换图：风格（使用本地上传）
   document.querySelectorAll(".edit-style-img").forEach(btn => {
     btn.onclick = async () => {
       const id = parseInt(btn.dataset.id);
-      const newImg = await selectImageAsync();
+      const newImg = await selectImageFile();
       if (newImg) {
         const target = styles.find(s => s.id === id);
         if (target) target.img = newImg;
@@ -481,7 +480,7 @@ function bindAdminEvents() {
     };
   });
   
-  // 换图：产品（改为输入链接方式）
+  // 换图：产品（使用链接输入）
   document.querySelectorAll(".edit-prod-img").forEach(btn => {
     btn.onclick = () => {
       const id = parseInt(btn.dataset.id);
@@ -504,7 +503,7 @@ function bindAdminEvents() {
 async function addStyle() {
   let name = prompt("请输入风格名称");
   if (!name || name.trim() === "") return;
-  const img = await selectImageAsync();
+  const img = await selectImageFile();
   if (!img) { alert("请选择风格展示图"); return; }
   styles.push({ id: Date.now(), name: name.trim(), img });
   saveData();
@@ -569,8 +568,8 @@ function addProduct() {
   const name = prompt(`请输入要在【${styleName} - ${selectedCate.name}】中添加的产品名称`);
   if (!name || name.trim() === "") return;
   
-  // 核心改动：产品图片改为输入链接
-  const imgLink = prompt("请输入产品图片链接\n\n（请先将图片上传到图床，如 sm.ms，然后复制图片链接粘贴到这里）");
+  // 产品图片：输入链接
+  const imgLink = prompt("请输入产品图片链接\n\n（请先将图片上传到图床，如 imgbb.com，然后复制图片链接粘贴到这里）");
   if (!imgLink || imgLink.trim() === "") {
     alert("必须提供图片链接");
     return;
