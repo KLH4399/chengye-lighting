@@ -19,7 +19,6 @@
     .category-card:active, .product-card:active, .style-card:active { transform: scale(0.98); }
     #contact-modal img { max-width: 100%; height: auto; pointer-events: auto; cursor: pointer; }
     footer button { transition: color 0.2s; }
-    /* 添加一个简单的加载中提示，虽然不是必须的，但能改善体验 */
     .btn-loading {
       opacity: 0.6;
       pointer-events: none;
@@ -81,6 +80,15 @@
       <div class="flex justify-between items-center mb-3"><span class="font-bold text-lg">💡 产品管理</span><button id="add-product" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-sm shadow">➕ 添加产品</button></div>
       <div id="admin-products" class="space-y-2"></div>
     </div>
+    <!-- 添加数据管理按钮 -->
+    <div class="mt-6 flex gap-2">
+      <button id="export-data" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg text-sm transition">
+        <i class="fa fa-download mr-1"></i>导出数据
+      </button>
+      <button id="reset-data" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg text-sm transition">
+        <i class="fa fa-refresh mr-1"></i>重置数据
+      </button>
+    </div>
   </div>
 </main>
 
@@ -120,30 +128,100 @@
 
 <script>
 // ======================= 初始化数据 =======================
-let styles = [
+// 默认数据
+const DEFAULT_STYLES = [
   { id: 1, name: "奶油风", img: "https://picsum.photos/id/20/400/300" },
   { id: 2, name: "中古风", img: "https://picsum.photos/id/119/400/300" },
   { id: 3, name: "现代简约", img: "https://picsum.photos/id/26/400/300" }
 ];
 
-let categories = [
+const DEFAULT_CATEGORIES = [
   { id: 1, styleId: 1, name: "吸顶灯" }, { id: 2, styleId: 1, name: "吊灯" },
   { id: 3, styleId: 1, name: "壁灯" }, { id: 4, styleId: 1, name: "台灯" },
   { id: 5, styleId: 2, name: "吸顶灯" }, { id: 6, styleId: 2, name: "吊灯" },
   { id: 7, styleId: 3, name: "吸顶灯" }, { id: 8, styleId: 3, name: "落地灯" }
 ];
 
-let products = [
+const DEFAULT_PRODUCTS = [
   { id: 1, cateId: 1, name: "奶油云朵吸顶灯", img: "https://picsum.photos/id/30/500/400", desc: "柔和光晕，营造奶油般温馨氛围，适合卧室/客厅" },
   { id: 2, cateId: 2, name: "奶油泡泡吊灯", img: "https://picsum.photos/id/58/500/400", desc: "圆润造型，光线均匀，餐厅优选" },
   { id: 3, cateId: 3, name: "奶油波浪壁灯", img: "https://picsum.photos/id/59/500/400", desc: "弧形设计，洗墙效果温柔" },
   { id: 4, cateId: 5, name: "中古琉璃吸顶灯", img: "https://picsum.photos/id/92/500/400", desc: "复古琉璃质感，艺术与光影结合" }
 ];
 
+// 从 localStorage 加载数据，如果没有则使用默认数据
+function loadData() {
+  try {
+    const savedStyles = localStorage.getItem('chengye_styles');
+    const savedCategories = localStorage.getItem('chengye_categories');
+    const savedProducts = localStorage.getItem('chengye_products');
+    
+    styles = savedStyles ? JSON.parse(savedStyles) : [...DEFAULT_STYLES];
+    categories = savedCategories ? JSON.parse(savedCategories) : [...DEFAULT_CATEGORIES];
+    products = savedProducts ? JSON.parse(savedProducts) : [...DEFAULT_PRODUCTS];
+  } catch (e) {
+    console.error("加载数据失败:", e);
+    styles = [...DEFAULT_STYLES];
+    categories = [...DEFAULT_CATEGORIES];
+    products = [...DEFAULT_PRODUCTS];
+  }
+}
+
+// 保存数据到 localStorage
+function saveData() {
+  try {
+    localStorage.setItem('chengye_styles', JSON.stringify(styles));
+    localStorage.setItem('chengye_categories', JSON.stringify(categories));
+    localStorage.setItem('chengye_products', JSON.stringify(products));
+    console.log("数据已保存到本地");
+  } catch (e) {
+    console.error("保存数据失败:", e);
+  }
+}
+
+// 重置为默认数据
+function resetToDefault() {
+  if (confirm("确定要重置所有数据吗？您添加的风格、品类和产品都会被删除！")) {
+    styles = [...DEFAULT_STYLES];
+    categories = [...DEFAULT_CATEGORIES];
+    products = [...DEFAULT_PRODUCTS];
+    saveData();
+    renderHome();
+    if (currentStyle) renderCategories();
+    if (currentCate) renderProducts();
+    renderAdminPanel();
+    alert("数据已重置");
+  }
+}
+
+// 导出数据（备份）
+function exportData() {
+  const data = {
+    styles: styles,
+    categories: categories,
+    products: products
+  };
+  const dataStr = JSON.stringify(data, null, 2);
+  const blob = new Blob([dataStr], {type: 'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `chengye_backup_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  alert("数据已导出，请保存好备份文件！");
+}
+
+let styles = [];
+let categories = [];
+let products = [];
 let currentStyle = null;
 let currentCate = null;
 const ADMIN_PWD = "2628585419";
-let isAddingProduct = false; // 添加一个标志位，防止重复点击
+let isAddingProduct = false;
+
+// 先加载数据
+loadData();
 
 // ========== 页面切换 ==========
 function showPage(pageId) {
@@ -355,6 +433,7 @@ function bindAdminEvents() {
         categories = categories.filter(c => c.styleId !== id);
         products = products.filter(p => !categories.some(cat => cat.id === p.cateId));
         if (currentStyle && currentStyle.id === id) currentStyle = null;
+        saveData(); // 保存数据
         renderHome();
         if (currentStyle) renderCategories();
         renderAdminPanel();
@@ -370,6 +449,7 @@ function bindAdminEvents() {
         categories = categories.filter(c => c.id !== id);
         products = products.filter(p => p.cateId !== id);
         if (currentCate && currentCate.id === id) currentCate = null;
+        saveData(); // 保存数据
         if (currentStyle) renderCategories();
         renderAdminPanel();
       }
@@ -382,6 +462,7 @@ function bindAdminEvents() {
       const id = parseInt(btn.dataset.id);
       if (confirm("确定删除此产品吗？")) {
         products = products.filter(p => p.id !== id);
+        saveData(); // 保存数据
         if (currentCate) renderProducts();
         renderAdminPanel();
       }
@@ -396,6 +477,7 @@ function bindAdminEvents() {
       if (newImg) {
         const target = styles.find(s => s.id === id);
         if (target) target.img = newImg;
+        saveData(); // 保存数据
         renderHome();
         renderAdminPanel();
         alert("图片已更新");
@@ -411,6 +493,7 @@ function bindAdminEvents() {
       if (newImg) {
         const target = products.find(p => p.id === id);
         if (target) target.img = newImg;
+        saveData(); // 保存数据
         if (currentCate) renderProducts();
         renderAdminPanel();
         alert("图片已更新");
@@ -426,6 +509,7 @@ async function addStyle() {
   const img = await selectImageAsync();
   if (!img) { alert("请选择风格展示图"); return; }
   styles.push({ id: Date.now(), name: name.trim(), img });
+  saveData(); // 保存数据
   renderHome();
   renderAdminPanel();
 }
@@ -452,13 +536,13 @@ function addCategory() {
   if (!name || name.trim() === "") return;
   
   categories.push({ id: Date.now(), styleId: styleId, name: name.trim() });
+  saveData(); // 保存数据
   renderAdminPanel();
   if (currentStyle && currentStyle.id === styleId) renderCategories();
   alert(`成功在【${selectedStyle.name}】中添加了品类：${name}`);
 }
 
 async function addProduct() {
-  // 防止重复点击
   if (isAddingProduct) {
     console.log("正在处理添加产品，请稍候...");
     return;
@@ -473,14 +557,11 @@ async function addProduct() {
       addBtn.disabled = true;
     }
     
-    console.log("开始添加产品流程");
-    
     if (!categories.length) { 
       alert("请先添加品类"); 
       return; 
     }
     
-    // 构建选项字符串
     let cateOptions = "";
     categories.forEach((c) => {
       const parentStyle = styles.find(s => s.id === c.styleId);
@@ -488,7 +569,6 @@ async function addProduct() {
       cateOptions += `${c.id}. ${styleName} - ${c.name}\n`;
     });
     
-    // 使用 setTimeout 确保弹窗能正常显示
     let cateIdInput = prompt(`请选择要添加到哪个品类（输入序号）：\n${cateOptions}`);
     if (!cateIdInput) return;
     
@@ -505,7 +585,6 @@ async function addProduct() {
     const name = prompt(`请输入要在【${styleName} - ${selectedCate.name}】中添加的产品名称`);
     if (!name || name.trim() === "") return;
     
-    // 短暂延迟，确保上一个弹窗完全关闭
     await new Promise(resolve => setTimeout(resolve, 100));
     
     const img = await selectImageAsync();
@@ -524,6 +603,7 @@ async function addProduct() {
       desc: desc || "精致灯具" 
     });
     
+    saveData(); // 保存数据
     renderAdminPanel();
     if (currentCate && currentCate.id === cateId) renderProducts();
     alert(`成功在【${styleName} - ${selectedCate.name}】中添加了产品：${name}`);
@@ -568,12 +648,8 @@ function initBackButtons() {
 
 // ========== 初始化所有事件 ==========
 function initEventListeners() {
-  console.log("开始初始化事件监听器");
-  
   const adminBtn = document.getElementById("admin-btn");
-  if (adminBtn) {
-    adminBtn.onclick = openAdmin;
-  }
+  if (adminBtn) adminBtn.onclick = openAdmin;
   
   const closeAdminBtn = document.getElementById("close-admin");
   if (closeAdminBtn) closeAdminBtn.onclick = () => showPage("home-page");
@@ -598,14 +674,10 @@ function initEventListeners() {
   }
   
   const addStyleBtn = document.getElementById("add-style");
-  if (addStyleBtn) {
-    addStyleBtn.onclick = addStyle;
-  }
+  if (addStyleBtn) addStyleBtn.onclick = addStyle;
   
   const addCategoryBtn = document.getElementById("add-category");
-  if (addCategoryBtn) {
-    addCategoryBtn.onclick = addCategory;
-  }
+  if (addCategoryBtn) addCategoryBtn.onclick = addCategory;
   
   const addProductBtn = document.getElementById("add-product");
   if (addProductBtn) {
@@ -613,20 +685,23 @@ function initEventListeners() {
       e.preventDefault();
       addProduct();
     };
-    console.log("add-product 绑定成功");
   }
   
+  // 数据管理按钮
+  const exportBtn = document.getElementById("export-data");
+  if (exportBtn) exportBtn.onclick = exportData;
+  
+  const resetBtn = document.getElementById("reset-data");
+  if (resetBtn) resetBtn.onclick = resetToDefault;
+  
   initBackButtons();
-  console.log("事件监听器初始化完成");
 }
 
 // ========== 启动应用 ==========
 window.addEventListener('DOMContentLoaded', function() {
-  console.log("页面加载完成，开始启动应用");
   renderHome();
   initEventListeners();
   showPage("home-page");
-  console.log("应用启动完成");
 });
 </script>
 </body>
