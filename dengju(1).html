@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+  <title>程野灯饰 | 匠心灯具展示</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+  <style>
+    .page { transition: opacity 0.2s ease; }
+    .hidden { display: none !important; }
+    .back-btn, .del, .edit-img, #add-style, #add-category, #add-product, #close-admin, #go-home, #show-contact, #admin-btn {
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .back-btn:active, .del:active, .edit-img:active { opacity: 0.7; }
+    img { pointer-events: none; user-select: none; }
+    .category-card, .product-card, .style-card { transition: transform 0.1s ease, box-shadow 0.2s; }
+    .category-card:active, .product-card:active, .style-card:active { transform: scale(0.98); }
+    #contact-modal img { max-width: 100%; height: auto; pointer-events: auto; cursor: pointer; }
+    footer button { transition: color 0.2s; }
+    select { padding: 8px; border-radius: 8px; border: 1px solid #e2e8f0; width: 100%; margin-bottom: 10px; }
+  </style>
+</head>
+<body class="bg-gray-50 font-sans antialiased">
+<div id="app" class="min-h-screen flex flex-col">
+
+<header class="sticky top-0 bg-white shadow-md z-40 border-b border-gray-100">
+  <div class="container mx-auto px-4 py-3 flex justify-between items-center">
+    <div class="flex items-center space-x-2">
+      <i class="fa fa-lightbulb-o text-yellow-500 text-2xl"></i>
+      <h1 class="text-xl font-bold tracking-wide text-gray-800">程野灯饰</h1>
+    </div>
+    <button id="admin-btn" class="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center transition">
+      <i class="fa fa-cog text-xl text-gray-600"></i>
+    </button>
+  </div>
+</header>
+
+<main class="flex-1 container mx-auto px-4 py-6">
+  <div id="home-page" class="page">
+    <h2 class="text-xl font-bold mb-4 border-l-4 border-yellow-500 pl-2">✨ 精选风格</h2>
+    <div class="grid grid-cols-2 gap-4" id="style-list"></div>
+  </div>
+
+  <div id="category-page" class="page hidden">
+    <button class="back-btn mb-3 flex items-center text-yellow-600 font-medium"><i class="fa fa-arrow-left mr-1"></i> 返回风格</button>
+    <h3 class="text-xl font-bold mb-4" id="category-title"></h3>
+    <div class="grid grid-cols-2 gap-4" id="category-items"></div>
+  </div>
+
+  <div id="product-page" class="page hidden">
+    <button class="back-btn mb-3 flex items-center text-yellow-600 font-medium"><i class="fa fa-arrow-left mr-1"></i> 返回品类</button>
+    <h3 class="text-xl font-bold mb-4" id="product-title"></h3>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5" id="product-items"></div>
+  </div>
+
+  <div id="detail-page" class="page hidden">
+    <button class="back-btn mb-3 flex items-center text-yellow-600 font-medium"><i class="fa fa-arrow-left mr-1"></i> 返回产品</button>
+    <div id="product-detail" class="bg-white rounded-xl shadow-md overflow-hidden"></div>
+  </div>
+
+  <div id="admin-page" class="page hidden">
+    <div class="flex justify-between items-center mb-4">
+      <h2 class="text-xl font-bold">⚙️ 商家后台</h2>
+      <button id="close-admin" class="bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded-full text-sm">✕ 关闭</button>
+    </div>
+    <div class="mb-6 bg-white p-4 rounded-xl shadow-sm">
+      <div class="flex justify-between items-center mb-3"><span class="font-bold text-lg">🎨 灯具风格</span><button id="add-style" class="bg-yellow-500 hover:bg-yellow-600 text-white px-3 py-1 rounded-lg text-sm shadow">➕ 添加风格</button></div>
+      <div id="admin-styles" class="space-y-2"></div>
+    </div>
+    <div class="mb-6 bg-white p-4 rounded-xl shadow-sm">
+      <div class="flex justify-between items-center mb-3"><span class="font-bold text-lg">📂 灯具品类</span><button id="add-category" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-lg text-sm shadow">➕ 添加类型</button></div>
+      <div id="admin-categories" class="space-y-2"></div>
+    </div>
+    <div class="bg-white p-4 rounded-xl shadow-sm">
+      <div class="flex justify-between items-center mb-3"><span class="font-bold text-lg">💡 产品管理</span><button id="add-product" class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg text-sm shadow">➕ 添加产品</button></div>
+      <div id="admin-products" class="space-y-2"></div>
+    </div>
+  </div>
+</main>
+
+<footer class="bg-white py-3 shadow-inner border-t border-gray-200 mt-4">
+  <div class="container mx-auto flex justify-around">
+    <button id="go-home" class="flex flex-col items-center text-yellow-500 transition">
+      <i class="fa fa-home text-xl"></i><span class="text-xs mt-0.5">首页</span>
+    </button>
+    <button id="show-contact" class="flex flex-col items-center text-gray-500 hover:text-yellow-500 transition">
+      <i class="fa fa-weixin text-xl"></i><span class="text-xs mt-0.5">联系我们</span>
+    </button>
+  </div>
+</footer>
+
+</div>
+
+<!-- 联系微信弹窗 - 手机号版本 -->
+<div id="contact-modal" class="fixed inset-0 bg-black/60 z-50 hidden items-center justify-center p-4">
+  <div class="bg-white rounded-2xl max-w-sm w-full shadow-2xl overflow-hidden">
+    <div class="flex justify-between items-center p-4 border-b">
+      <h3 class="font-bold text-lg flex items-center"><i class="fa fa-wechat text-green-600 mr-2"></i>联系我们</h3>
+      <button id="close-contact" class="text-gray-400 hover:text-gray-700 text-2xl leading-5">&times;</button>
+    </div>
+    <div class="text-center p-5">
+      <p class="mb-3 text-gray-700">长按保存二维码，微信扫一扫咨询</p>
+      <img id="dynamic-wechat-qr" src="https://picui.ogmua.cn/s1/2026/04/08/69d60a5809c25.webp" alt="微信二维码" class="w-52 h-52 mx-auto rounded-lg border shadow-sm">
+      <div class="mt-4 bg-gray-50 py-2 px-3 rounded-full inline-block">
+        <span class="text-sm font-mono text-gray-800">手机号：<strong class="text-yellow-700">15067499076</strong></span>
+      </div>
+      <p class="text-xs text-gray-400 mt-3">添加请备注"灯具咨询"</p>
+      <button id="save-qr-tip" class="mt-3 text-xs text-blue-500 underline">保存二维码到手机</button>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="image-selector" accept="image/*" class="hidden">
+
+<script>
+// ======================= 初始化数据 =======================
+let styles = [
+  { id: 1, name: "奶油风", img: "https://picsum.photos/id/20/400/300" },
+  { id: 2, name: "中古风", img: "https://picsum.photos/id/119/400/300" },
+  { id: 3, name: "现代简约", img: "https://picsum.photos/id/26/400/300" }
+];
+
+let categories = [
+  { id: 1, styleId: 1, name: "吸顶灯" }, { id: 2, styleId: 1, name: "吊灯" },
+  { id: 3, styleId: 1, name: "壁灯" }, { id: 4, styleId: 1, name: "台灯" },
+  { id: 5, styleId: 2, name: "吸顶灯" }, { id: 6, styleId: 2, name: "吊灯" },
+  { id: 7, styleId: 3, name: "吸顶灯" }, { id: 8, styleId: 3, name: "落地灯" }
+];
+
+let products = [
+  { id: 1, cateId: 1, name: "奶油云朵吸顶灯", img: "https://picsum.photos/id/30/500/400", desc: "柔和光晕，营造奶油般温馨氛围，适合卧室/客厅" },
+  { id: 2, cateId: 2, name: "奶油泡泡吊灯", img: "https://picsum.photos/id/58/500/400", desc: "圆润造型，光线均匀，餐厅优选" },
+  { id: 3, cateId: 3, name: "奶油波浪壁灯", img: "https://picsum.photos/id/59/500/400", desc: "弧形设计，洗墙效果温柔" },
+  { id: 4, cateId: 5, name: "中古琉璃吸顶灯", img: "https://picsum.photos/id/92/500/400", desc: "复古琉璃质感，艺术与光影结合" }
+];
+
+let currentStyle = null;
+let currentCate = null;
+const ADMIN_PWD = "2628585419";
+
+// ========== 页面切换 ==========
+function showPage(pageId) {
+  const pages = ["home-page", "category-page", "product-page", "detail-page", "admin-page"];
+  pages.forEach(pid => {
+    const el = document.getElementById(pid);
+    if (el) el.classList.add("hidden");
+  });
+  const target = document.getElementById(pageId);
+  if (target) target.classList.remove("hidden");
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+// ========== 选择图片 ==========
+function selectImageAsync() {
+  return new Promise((resolve) => {
+    const input = document.getElementById("image-selector");
+    input.value = "";
+    const handler = (e) => {
+      const file = e.target.files[0];
+      if (file && file.type.startsWith("image/")) {
+        resolve(URL.createObjectURL(file));
+      } else {
+        resolve(null);
+      }
+      input.removeEventListener("change", handler);
+    };
+    input.addEventListener("change", handler);
+    input.click();
+  });
+}
+
+// ========== 防XSS ==========
+function escapeHtml(str) {
+  if (!str) return '';
+  return str.replace(/[&<>]/g, function(m) {
+    if (m === '&') return '&amp;';
+    if (m === '<') return '&lt;';
+    if (m === '>') return '&gt;';
+    return m;
+  });
+}
+
+// ========== 渲染首页风格 ==========
+function renderHome() {
+  const container = document.getElementById("style-list");
+  if (!container) return;
+  container.innerHTML = "";
+  if (styles.length === 0) {
+    container.innerHTML = '<div class="col-span-2 text-center text-gray-400 py-8">暂无风格，请后台添加</div>';
+    return;
+  }
+  styles.forEach(style => {
+    const card = document.createElement("div");
+    card.className = "bg-white rounded-xl shadow-md overflow-hidden style-card cursor-pointer hover:shadow-lg transition";
+    card.innerHTML = `<img src="${style.img}" class="w-full h-36 object-cover" alt="${style.name}" loading="lazy"><div class="p-3 text-center font-semibold text-gray-800">${escapeHtml(style.name)}</div>`;
+    card.onclick = () => {
+      currentStyle = style;
+      document.getElementById("category-title").innerText = style.name;
+      renderCategories();
+      showPage("category-page");
+    };
+    container.appendChild(card);
+  });
+}
+
+// ========== 渲染品类 ==========
+function renderCategories() {
+  const container = document.getElementById("category-items");
+  if (!container || !currentStyle) return;
+  const filtered = categories.filter(c => c.styleId === currentStyle.id);
+  container.innerHTML = "";
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="col-span-2 text-center text-gray-400 py-8">暂无灯具类型，请后台添加</div>';
+    return;
+  }
+  filtered.forEach(cate => {
+    const card = document.createElement("div");
+    card.className = "bg-white p-5 rounded-xl shadow-md text-center cursor-pointer category-card hover:shadow-lg transition border border-gray-100";
+    card.innerHTML = `<i class="fa fa-lightbulb-o text-yellow-500 text-3xl mb-2 block"></i><span class="font-medium text-lg">${escapeHtml(cate.name)}</span>`;
+    card.onclick = () => {
+      currentCate = cate;
+      document.getElementById("product-title").innerText = cate.name;
+      renderProducts();
+      showPage("product-page");
+    };
+    container.appendChild(card);
+  });
+}
+
+// ========== 渲染产品列表 ==========
+function renderProducts() {
+  const container = document.getElementById("product-items");
+  if (!container || !currentCate) return;
+  const filtered = products.filter(p => p.cateId === currentCate.id);
+  container.innerHTML = "";
+  if (filtered.length === 0) {
+    container.innerHTML = '<div class="col-span-2 text-center text-gray-400 py-10">暂无产品，请在后台添加</div>';
+    return;
+  }
+  filtered.forEach(prod => {
+    const card = document.createElement("div");
+    card.className = "bg-white rounded-xl shadow-md overflow-hidden cursor-pointer product-card hover:shadow-lg transition";
+    card.innerHTML = `<img src="${prod.img}" class="w-full h-48 object-cover" alt="${prod.name}" loading="lazy"><div class="p-3"><h4 class="font-bold text-lg">${escapeHtml(prod.name)}</h4><p class="text-gray-500 text-sm truncate">${escapeHtml(prod.desc.substring(0, 40))}</p></div>`;
+    card.onclick = () => {
+      const detailContainer = document.getElementById("product-detail");
+      if (detailContainer) {
+        detailContainer.innerHTML = `<img src="${prod.img}" class="w-full max-h-96 object-cover rounded-t-xl" alt="${prod.name}"><div class="p-5"><h3 class="text-2xl font-bold mb-2">${escapeHtml(prod.name)}</h3><p class="text-gray-600 leading-relaxed mb-5">${escapeHtml(prod.desc)}</p><button class="wx-consult-btn bg-yellow-500 hover:bg-yellow-600 text-white w-full py-3 rounded-xl font-semibold shadow transition flex items-center justify-center gap-2"><i class="fa fa-wechat text-white text-xl"></i> 微信咨询客服</button></div>`;
+        const consultBtn = detailContainer.querySelector(".wx-consult-btn");
+        if (consultBtn) consultBtn.onclick = () => openContactModal();
+      }
+      showPage("detail-page");
+    };
+    container.appendChild(card);
+  });
+}
+
+// ========== 弹窗控制 ==========
+function openContactModal() {
+  const modal = document.getElementById("contact-modal");
+  if (modal) {
+    modal.classList.remove("hidden");
+    modal.style.display = "flex";
+  }
+}
+
+function closeContactModal() {
+  const modal = document.getElementById("contact-modal");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.style.display = "";
+  }
+}
+
+function saveWechatQR() {
+  const img = document.getElementById("dynamic-wechat-qr");
+  if (!img) return;
+  fetch(img.src)
+    .then(res => res.blob())
+    .then(blob => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'chengye_wechat_qr.png';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    })
+    .catch(() => alert("长按二维码图片即可保存到手机"));
+}
+
+// ========== 后台渲染（完整版） ==========
+function renderAdminPanel() {
+  // 风格区域
+  const styleContainer = document.getElementById("admin-styles");
+  if (styleContainer) {
+    styleContainer.innerHTML = "";
+    styles.forEach(s => {
+      const div = document.createElement("div");
+      div.className = "flex justify-between items-center border-b pb-2 pt-1";
+      div.innerHTML = `<div><span class="font-medium">${escapeHtml(s.name)}</span></div><div><button class="edit-style-img bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs mr-1" data-id="${s.id}">换图</button><button class="del-style bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs" data-id="${s.id}">删除</button></div>`;
+      styleContainer.appendChild(div);
+    });
+  }
+
+  // 品类区域
+  const cateContainer = document.getElementById("admin-categories");
+  if (cateContainer) {
+    cateContainer.innerHTML = "";
+    categories.forEach(c => {
+      const parentStyle = styles.find(s => s.id === c.styleId);
+      const styleName = parentStyle ? parentStyle.name : "未知";
+      const div = document.createElement("div");
+      div.className = "flex justify-between items-center border-b pb-2 text-sm";
+      div.innerHTML = `<div><span class="font-medium">${escapeHtml(c.name)}</span> <span class="text-gray-500">(${escapeHtml(styleName)})</span></div><button class="del-cate bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs" data-id="${c.id}">删除</button>`;
+      cateContainer.appendChild(div);
+    });
+  }
+
+  // 产品区域
+  const prodContainer = document.getElementById("admin-products");
+  if (prodContainer) {
+    prodContainer.innerHTML = "";
+    products.forEach(p => {
+      const parentCate = categories.find(c => c.id === p.cateId);
+      const cateName = parentCate ? parentCate.name : "未分类";
+      const parentStyle = parentCate ? styles.find(s => s.id === parentCate.styleId) : null;
+      const styleName = parentStyle ? parentStyle.name : "未知";
+      const div = document.createElement("div");
+      div.className = "flex justify-between items-center border-b pb-2 text-sm";
+      div.innerHTML = `<div><span class="font-medium">${escapeHtml(p.name)}</span> <span class="text-gray-500">[${escapeHtml(styleName)} - ${escapeHtml(cateName)}]</span></div><div><button class="edit-prod-img bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs mr-1" data-id="${p.id}">换图</button><button class="del-prod bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs" data-id="${p.id}">删除</button></div>`;
+      prodContainer.appendChild(div);
+    });
+  }
+
+  // 绑定后台事件
+  // 删除风格
+  document.querySelectorAll(".del-style").forEach(btn => {
+    btn.onclick = () => {
+      const id = parseInt(btn.dataset.id);
+      if (confirm("确定删除此风格吗？其下的品类和产品也会被删除")) {
+        styles = styles.filter(s => s.id !== id);
+        categories = categories.filter(c => c.styleId !== id);
+        products = products.filter(p => !categories.some(cat => cat.id === p.cateId));
+        if (currentStyle && currentStyle.id === id) currentStyle = null;
+        renderHome();
+        if (currentStyle) renderCategories();
+        renderAdminPanel();
+      }
+    };
+  });
+  // 删除品类
+  document.querySelectorAll(".del-cate").forEach(btn => {
+    btn.onclick = () => {
+      const id = parseInt(btn.dataset.id);
+      if (confirm("确定删除此品类吗？其下的产品也会被删除")) {
+        categories = categories.filter(c => c.id !== id);
+        products = products.filter(p => p.cateId !== id);
+        if (currentCate && currentCate.id === id) currentCate = null;
+        if (currentStyle) renderCategories();
+        renderAdminPanel();
+      }
+    };
+  });
+  // 删除产品
+  document.querySelectorAll(".del-prod").forEach(btn => {
+    btn.onclick = () => {
+      const id = parseInt(btn.dataset.id);
+      if (confirm("确定删除此产品吗？")) {
+        products = products.filter(p => p.id !== id);
+        if (currentCate) renderProducts();
+        renderAdminPanel();
+      }
+    };
+  });
+  // 换图：风格
+  document.querySelectorAll(".edit-style-img").forEach(btn => {
+    btn.onclick = async () => {
+      const id = parseInt(btn.dataset.id);
+      const newImg = await selectImageAsync();
+      if (newImg) {
+        const target = styles.find(s => s.id === id);
+        if (target) target.img = newImg;
+        renderHome();
+        renderAdminPanel();
+        alert("图片已更新");
+      }
+    };
+  });
+  // 换图：产品
+  document.querySelectorAll(".edit-prod-img").forEach(btn => {
+    btn.onclick = async () => {
+      const id = parseInt(btn.dataset.id);
+      const newImg = await selectImageAsync();
+      if (newImg) {
+        const target = products.find(p => p.id === id);
+        if (target) target.img = newImg;
+        if (currentCate) renderProducts();
+        renderAdminPanel();
+        alert("图片已更新");
+      }
+    };
+  });
+}
+
+// ========== 添加功能（修复版） ==========
+async function addStyle() {
+  let name = prompt("请输入风格名称");
+  if (!name || name.trim() === "") return;
+  const img = await selectImageAsync();
+  if (!img) { alert("请选择风格展示图"); return; }
+  styles.push({ id: Date.now(), name: name.trim(), img });
+  renderHome();
+  renderAdminPanel();
+}
+
+function addCategory() {
+  if (!styles.length) { alert("请先添加风格"); return; }
+  
+  // 创建选择对话框
+  let styleOptions = "";
+  styles.forEach(s => {
+    styleOptions += `${s.id}. ${s.name}\n`;
+  });
+  
+  let styleIdInput = prompt(`请选择要添加到哪个风格（输入序号）：\n${styleOptions}`);
+  if (!styleIdInput) return;
+  
+  const styleId = parseInt(styleIdInput);
+  const selectedStyle = styles.find(s => s.id === styleId);
+  if (!selectedStyle) {
+    alert("无效的风格序号");
+    return;
+  }
+  
+  const name = prompt(`请输入要在【${selectedStyle.name}】中添加的品类名称（如：吸顶灯、吊灯等）`);
+  if (!name || name.trim() === "") return;
+  
+  categories.push({ id: Date.now(), styleId: styleId, name: name.trim() });
+  renderAdminPanel();
+  if (currentStyle && currentStyle.id === styleId) renderCategories();
+  alert(`成功在【${selectedStyle.name}】中添加了品类：${name}`);
+}
+
+async function addProduct() {
+  if (!categories.length) { 
+    alert("请先添加品类"); 
+    return; 
+  }
+  
+  // 创建选择对话框
+  let cateOptions = "";
+  categories.forEach((c) => {
+    const parentStyle = styles.find(s => s.id === c.styleId);
+    const styleName = parentStyle ? parentStyle.name : "未知";
+    cateOptions += `${c.id}. ${styleName} - ${c.name}\n`;
+  });
+  
+  let cateIdInput = prompt(`请选择要添加到哪个品类（输入序号）：\n${cateOptions}`);
+  if (!cateIdInput) return;
+  
+  const cateId = parseInt(cateIdInput);
+  const selectedCate = categories.find(c => c.id === cateId);
+  if (!selectedCate) {
+    alert("无效的品类序号");
+    return;
+  }
+  
+  const parentStyle = styles.find(s => s.id === selectedCate.styleId);
+  const styleName = parentStyle ? parentStyle.name : "未知";
+  
+  const name = prompt(`请输入要在【${styleName} - ${selectedCate.name}】中添加的产品名称`);
+  if (!name || name.trim() === "") return;
+  
+  const img = await selectImageAsync();
+  if (!img) { 
+    alert("请选择产品图片"); 
+    return; 
+  }
+  
+  const desc = prompt("请输入产品描述", "高品质灯具");
+  
+  products.push({ 
+    id: Date.now(), 
+    cateId: cateId, 
+    name: name.trim(), 
+    img: img, 
+    desc: desc || "精致灯具" 
+  });
+  
+  renderAdminPanel();
+  if (currentCate && currentCate.id === cateId) renderProducts();
+  alert(`成功在【${styleName} - ${selectedCate.name}】中添加了产品：${name}`);
+}
+
+// ========== 后台登录 ==========
+function openAdmin() {
+  const pwd = prompt("请输入商家密码：");
+  if (pwd === ADMIN_PWD) {
+    renderAdminPanel();
+    showPage("admin-page");
+  } else if (pwd !== null) {
+    alert("密码错误");
+  }
+}
+
+// ========== 返回按钮逻辑 ==========
+function initBackButtons() {
+  document.querySelectorAll(".back-btn").forEach(btn => {
+    btn.onclick = () => {
+      if (!document.getElementById("detail-page").classList.contains("hidden")) {
+        showPage("product-page");
+      } else if (!document.getElementById("product-page").classList.contains("hidden")) {
+        showPage("category-page");
+      } else {
+        showPage("home-page");
+      }
+    };
+  });
+}
+
+// ========== 初始化所有事件 ==========
+function initEventListeners() {
+  const adminBtn = document.getElementById("admin-btn");
+  if (adminBtn) adminBtn.onclick = openAdmin;
+  
+  const closeAdminBtn = document.getElementById("close-admin");
+  if (closeAdminBtn) closeAdminBtn.onclick = () => showPage("home-page");
+  
+  const goHomeBtn = document.getElementById("go-home");
+  if (goHomeBtn) goHomeBtn.onclick = () => showPage("home-page");
+  
+  const showContactBtn = document.getElementById("show-contact");
+  if (showContactBtn) showContactBtn.onclick = openContactModal;
+  
+  const closeContactBtn = document.getElementById("close-contact");
+  if (closeContactBtn) closeContactBtn.onclick = closeContactModal;
+  
+  const saveQrBtn = document.getElementById("save-qr-tip");
+  if (saveQrBtn) saveQrBtn.onclick = saveWechatQR;
+  
+  const modal = document.getElementById("contact-modal");
+  if (modal) {
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) closeContactModal();
+    });
+  }
+  
+  const addStyleBtn = document.getElementById("add-style");
+  if (addStyleBtn) addStyleBtn.onclick = addStyle;
+  
+  const addCategoryBtn = document.getElementById("add-category");
+  if (addCategoryBtn) addCategoryBtn.onclick = addCategory;
+  
+  const addProductBtn = document.getElementById("add-product");
+  if (addProductBtn) addProductBtn.onclick = addProduct;
+  
+  initBackButtons();
+}
+
+// ========== 启动应用 ==========
+window.onload = function() {
+  renderHome();
+  initEventListeners();
+  showPage("home-page");
+  console.log("应用已启动");
+};
+</script>
+</body>
+</html>
