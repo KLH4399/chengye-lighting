@@ -80,10 +80,14 @@
       <button id="export-data" class="flex-1 bg-gray-500 hover:bg-gray-600 text-white py-2 rounded-lg text-sm transition">
         <i class="fa fa-download mr-1"></i>导出数据
       </button>
+      <button id="import-data" class="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-lg text-sm transition">
+        <i class="fa fa-upload mr-1"></i>导入数据
+      </button>
       <button id="reset-data" class="flex-1 bg-red-500 hover:bg-red-600 text-white py-2 rounded-lg text-sm transition">
         <i class="fa fa-refresh mr-1"></i>重置数据
       </button>
     </div>
+    <p class="text-xs text-gray-400 mt-2 text-center">在电脑上导出数据，发送到手机，在手机上导入即可同步</p>
   </div>
 </main>
 
@@ -119,7 +123,8 @@
   </div>
 </div>
 
-<input type="file" id="image-selector" accept="image/*" class="hidden">
+<!-- 隐藏的文件输入，用于导入数据 -->
+<input type="file" id="import-file" accept=".json,application/json" class="hidden">
 
 <script>
 // ======================= 初始化数据 =======================
@@ -170,7 +175,7 @@ function saveData() {
     console.log("数据已保存到本地");
   } catch (e) {
     console.error("保存数据失败:", e);
-    alert("保存失败，可能是存储空间不足。请导出数据备份，然后重置或清理浏览器缓存。");
+    alert("保存失败，可能是存储空间不足。");
   }
 }
 
@@ -200,7 +205,42 @@ function exportData() {
   a.download = `chengye_backup_${new Date().toISOString().slice(0,10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
-  alert("数据已导出，请保存好备份文件！");
+  alert("数据已导出！\n\n将文件发送到手机，在手机浏览器中打开网页，进入后台点击「导入数据」即可同步。");
+}
+
+// 导入数据
+function importData() {
+  const input = document.getElementById("import-file");
+  input.value = "";
+  input.onchange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const data = JSON.parse(event.target.result);
+        if (data.styles && data.categories && data.products) {
+          styles = data.styles;
+          categories = data.categories;
+          products = data.products;
+          saveData();
+          renderHome();
+          if (currentStyle) renderCategories();
+          if (currentCate) renderProducts();
+          renderAdminPanel();
+          alert("数据导入成功！");
+        } else {
+          alert("无效的数据文件");
+        }
+      } catch (err) {
+        alert("文件解析失败，请确保是导出的 JSON 文件");
+      }
+      input.value = "";
+    };
+    reader.readAsText(file);
+  };
+  input.click();
 }
 
 let styles = [];
@@ -223,35 +263,6 @@ function showPage(pageId) {
   const target = document.getElementById(pageId);
   if (target) target.classList.remove("hidden");
   window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-// ========== 选择图片（用于风格封面，返回 Base64） ==========
-function selectImageFile() {
-  return new Promise((resolve) => {
-    const input = document.getElementById("image-selector");
-    if (!input) {
-      resolve(null);
-      return;
-    }
-    input.value = "";
-    const handler = (e) => {
-      const file = e.target.files[0];
-      if (file && file.type.startsWith("image/")) {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => {
-          alert("图片读取失败");
-          resolve(null);
-        };
-        reader.readAsDataURL(file);
-      } else {
-        resolve(null);
-      }
-      input.removeEventListener("change", handler);
-    };
-    input.addEventListener("change", handler);
-    input.click();
-  });
 }
 
 // ========== 防XSS ==========
@@ -464,23 +475,25 @@ function bindAdminEvents() {
     };
   });
   
-  // 换图：风格（使用本地上传）
+  // 换图：风格（改为输入链接）
   document.querySelectorAll(".edit-style-img").forEach(btn => {
-    btn.onclick = async () => {
+    btn.onclick = () => {
       const id = parseInt(btn.dataset.id);
-      const newImg = await selectImageFile();
-      if (newImg) {
-        const target = styles.find(s => s.id === id);
-        if (target) target.img = newImg;
+      const target = styles.find(s => s.id === id);
+      if (!target) return;
+      
+      const newLink = prompt("请输入新的风格封面图链接\n\n（请先将图片上传到图床，如 imgbb.com，然后复制图片链接粘贴到这里）", target.img);
+      if (newLink && newLink.trim() !== "") {
+        target.img = newLink.trim();
         saveData();
         renderHome();
         renderAdminPanel();
-        alert("图片已更新");
+        alert("图片链接已更新");
       }
     };
   });
   
-  // 换图：产品（使用链接输入）
+  // 换图：产品（输入链接）
   document.querySelectorAll(".edit-prod-img").forEach(btn => {
     btn.onclick = () => {
       const id = parseInt(btn.dataset.id);
@@ -500,12 +513,17 @@ function bindAdminEvents() {
 }
 
 // ========== 添加功能 ==========
-async function addStyle() {
+function addStyle() {
   let name = prompt("请输入风格名称");
   if (!name || name.trim() === "") return;
-  const img = await selectImageFile();
-  if (!img) { alert("请选择风格展示图"); return; }
-  styles.push({ id: Date.now(), name: name.trim(), img });
+  
+  const imgLink = prompt("请输入风格封面图链接\n\n（请先将图片上传到图床，如 imgbb.com，然后复制图片链接粘贴到这里）");
+  if (!imgLink || imgLink.trim() === "") {
+    alert("必须提供图片链接");
+    return;
+  }
+  
+  styles.push({ id: Date.now(), name: name.trim(), img: imgLink.trim() });
   saveData();
   renderHome();
   renderAdminPanel();
@@ -568,7 +586,6 @@ function addProduct() {
   const name = prompt(`请输入要在【${styleName} - ${selectedCate.name}】中添加的产品名称`);
   if (!name || name.trim() === "") return;
   
-  // 产品图片：输入链接
   const imgLink = prompt("请输入产品图片链接\n\n（请先将图片上传到图床，如 imgbb.com，然后复制图片链接粘贴到这里）");
   if (!imgLink || imgLink.trim() === "") {
     alert("必须提供图片链接");
@@ -655,6 +672,9 @@ function initEventListeners() {
   
   const exportBtn = document.getElementById("export-data");
   if (exportBtn) exportBtn.onclick = exportData;
+  
+  const importBtn = document.getElementById("import-data");
+  if (importBtn) importBtn.onclick = importData;
   
   const resetBtn = document.getElementById("reset-data");
   if (resetBtn) resetBtn.onclick = resetToDefault;
